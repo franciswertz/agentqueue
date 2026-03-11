@@ -1,0 +1,5 @@
+FROM mcr.microsoft.com/playwright:v1.49.1-jammy
+
+RUN npm install -g @playwright/mcp@0.0.68
+
+ENTRYPOINT ["playwright-mcp"]

@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: agentq-db-migration
+  namespace: agentq
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: agentq-db-migration
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migration
+          image: postgres:15
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              psql "$DB_DSN" -v ON_ERROR_STOP=1 -f /migrations/001_init.sql
+              psql "$DB_DSN" -v ON_ERROR_STOP=1 -f /migrations/002_parent_job_id.sql
+          env:
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: agentq-db
+                  key: dsn
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+      volumes:
+        - name: migrations
+          configMap:
+            name: agentq-db-migrations

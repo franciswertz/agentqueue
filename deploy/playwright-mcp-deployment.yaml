@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: playwright-mcp
+  namespace: agentq
+  labels:
+    app: playwright-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playwright-mcp
+  template:
+    metadata:
+      labels:
+        app: playwright-mcp
+    spec:
+      containers:
+        - name: playwright-mcp
+          image: agentq-playwright-mcp:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - --headless
+            - --host
+            - 0.0.0.0
+            - --port
+            - "3333"
+            - --allowed-hosts
+            - "*"
+            - --browser
+            - chromium
+            - --user-agent
+            - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/144.0.0.0 Safari/537.36
+            - --storage-state
+            - /data/instacart-storage.json
+            - --isolated
+          ports:
+            - name: http
+              containerPort: 3333
+          env:
+            - name: PLAYWRIGHT_BROWSERS_PATH
+              value: /ms-playwright
+            - name: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+              value: "1"
+          volumeMounts:
+            - name: storage
+              mountPath: /data/instacart-storage.json
+              subPath: instacart-storage.json
+      volumes:
+        - name: storage
+          secret:
+            secretName: playwright-mcp-storage

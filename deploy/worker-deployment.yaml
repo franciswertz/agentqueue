@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentq-worker
+  namespace: agentq
+  labels:
+    app: agentq-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agentq-worker
+  template:
+    metadata:
+      labels:
+        app: agentq-worker
+    spec:
+      containers:
+        - name: worker
+          image: agentq-worker:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: opencode-auth
+              mountPath: /root/.local/share/opencode/auth.json
+              subPath: auth.json
+            - name: opencode-config
+              mountPath: /root/.config/opencode/opencode.json
+              subPath: opencode.json
+          env:
+            - name: MQTT_BROKER_URL
+              value: tcp://mosquitto.mqtt.svc.cluster.local:1883
+            - name: MQTT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: agentq-mqtt
+                  key: username
+                  optional: true
+            - name: MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: agentq-mqtt
+                  key: password
+                  optional: true
+            - name: MQTT_ENQUEUE_TOPIC
+              value: $share/agentq/jobs/enqueue/+
+            - name: MQTT_COMPLETE_TOPIC
+              value: jobs/complete/{app_id}
+            - name: MQTT_CLIENT_ID
+              value: agentq-worker-
+            - name: MQTT_QOS
+              value: "1"
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: agentq-db
+                  key: dsn
+            - name: OPENCODE_CMD
+              value: opencode
+            - name: OPENCODE_ARGS
+              value: run --format json
+            - name: OPENCODE_DIR
+              value: /root
+            - name: OPENCODE_TIMEOUT
+              value: 5m
+            - name: OPENCODE_MAX_OUTPUT_BYTES
+              value: "1048576"
+            - name: OPENCODE_DEBUG_ARGS
+              value: "true"
+            - name: HTTP_ADDR
+              value: :8080
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+            limits:
+              memory: "3Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: opencode-auth
+          secret:
+            secretName: opencode-auth
+            items:
+              - key: auth.json
+                path: auth.json
+        - name: opencode-config
+          configMap:
+            name: opencode-config
+            items:
+              - key: opencode.json
+                path: opencode.json

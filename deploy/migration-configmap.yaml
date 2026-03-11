@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentq-db-migrations
+  namespace: agentq
+data:
+  001_init.sql: |
+    CREATE SCHEMA IF NOT EXISTS public;
+    SET search_path TO public;
+    CREATE TABLE IF NOT EXISTS jobs (
+        job_id TEXT PRIMARY KEY,
+        app_id TEXT NOT NULL,
+        state TEXT NOT NULL,
+        payload JSONB NOT NULL,
+        result JSONB,
+        error TEXT,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        started_at TIMESTAMPTZ,
+        completed_at TIMESTAMPTZ
+    );
+
+    CREATE INDEX IF NOT EXISTS jobs_state_created_idx ON jobs (state, created_at);
+  002_parent_job_id.sql: |
+    SET search_path TO public;
+    ALTER TABLE jobs
+    ADD COLUMN IF NOT EXISTS parent_job_id TEXT;
+
+    CREATE INDEX IF NOT EXISTS jobs_parent_job_id_idx ON jobs (parent_job_id);

@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../
+
+images:
+  - name: agentq-worker
+    newName: registry.example.com/agentq-worker
+    newTag: latest
+  - name: agentq-playwright-mcp
+    newName: registry.example.com/agentq-playwright-mcp
+    newTag: latest

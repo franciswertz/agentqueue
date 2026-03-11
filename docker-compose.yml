@@ -1,0 +1,47 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./deploy/mosquitto:/mosquitto/config
+
+  playwright-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright-mcp
+    command: ["--headless", "--host", "0.0.0.0", "--port", "3333", "--allowed-hosts", "*", "--browser", "chromium", "--user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/144.0.0.0 Safari/537.36", "--storage-state", "/data/instacart-storage.json", "--isolated"]
+    ports:
+      - "3333:3333"
+    environment:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    volumes:
+      - ./data:/data
+
+  worker:
+    build:
+      context: .
+    image: agentq-worker:local
+    environment:
+      MQTT_BROKER_URL: tcp://mosquitto:1883
+      MQTT_CLIENT_ID: agentq-worker-
+      MQTT_ENQUEUE_TOPIC: $$share/agentq/jobs/enqueue/+
+      MQTT_COMPLETE_TOPIC: jobs/complete/{app_id}
+      DB_DSN: postgres://mcp_agent:pg@host.docker.internal:5432/agentq?sslmode=disable
+      OPENCODE_CMD: /usr/local/bin/opencode
+      OPENCODE_ARGS: run --format json
+      OPENCODE_DIR: /root
+      OPENCODE_TIMEOUT: 5m
+      HTTP_ADDR: :8080
+    volumes:
+      - ./data/auth.json:/root/.local/share/opencode/auth.json:ro
+      - ./agents:/root/.config/opencode/agents:ro
+      - ./opencode.json:/root/.config/opencode/opencode.json:ro
+    depends_on:
+      - mosquitto
+      - playwright-mcp
+    restart: on-failure
+    deploy:
+      replicas: 4

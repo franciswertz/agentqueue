@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentq-worker
+  namespace: agentq
+  labels:
+    app: agentq-worker
+spec:
+  selector:
+    app: agentq-worker
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
