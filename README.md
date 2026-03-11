@@ -88,3 +88,22 @@ Configuration is via environment variables. See `.env.example` for defaults and 
 ## Notes
 - This project is under active development; interfaces and defaults may change.
 - Secrets and runtime data must remain out of source control.
+
+## Instacart session recipe (for Playwright MCP)
+Use this when you need Instacart agents and want to run authentication locally.
+
+1) Install Playwright (once per machine):
+
+```bash
+npx playwright install chromium
+```
+
+2) Launch an interactive browser and authenticate, saving storage state:
+
+```bash
+npx playwright codegen https://www.instacart.com --save-storage=data/instacart-storage.json
+```
+
+3) Log in in the opened browser, then close the window. The session is saved to `data/instacart-storage.json`.
+
+When you start the Playwright MCP container, it reads that file from `data/` and reuses the session.
